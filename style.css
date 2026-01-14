@@ -1,0 +1,23 @@
+:root {
+    --primary-color: #0056b3;
+    /* Ou a cor exata do PortalRefeicao */
+    --table-th-border-color: #dee2e6;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    padding: 20px;
+    background-color: #f4f6f9;
+}
+
+h1 {
+    margin-bottom: 20px;
+    color: #333;
+}
+
+#container-tabela {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+    padding: 20px;
+}
