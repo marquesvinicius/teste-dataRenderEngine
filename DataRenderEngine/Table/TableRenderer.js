@@ -56,7 +56,7 @@ class TableRenderer {
         });
         this.plugins = config.plugins || [];
         RendererUtils.initPlugins(this, this.plugins);
-        this.accentColor = RendererUtils.resolveThemeColor(config.accentColor, '#333333');
+        this.accentColor = RendererUtils.resolveThemeColor(config.accentColor);
         const detectedColor = RendererUtils.getThemeColor();
         this.headerColor = config.headerColor || detectedColor || '#f8f9fa';
         this.headerBorderColor = config.headerBorderColor || RendererUtils.getHeaderBorderBottomColor() || '#333333';
@@ -67,7 +67,7 @@ class TableRenderer {
         this.forceCompactPagination = config.forceCompactPagination !== false;
         this.isInAccordion = config.isInAccordion === true;
         this.criticalColumns = config.criticalColumns || [];
-        this.headerTextColor = config.headerTextColor || (this.headerColor === '#f8f9fa' ? this.accentColor : '#ffffff');
+        this.headerTextColor = config.headerTextColor || (this.headerColor === '#f8f9fa' ? '#333333' : '#ffffff');
         this.hasDataLoaded = false;
         this._widthCache = new Map();
         this._lastDatasetRef = null;
@@ -297,7 +297,7 @@ class TableRenderer {
         return `color-mix(in srgb, ${color} ${percentage}%, transparent)`;
     }
     initStyles() {
-        const accentColor = this.accentColor || '#333';
+        const accentColor = this.accentColor || RendererUtils.DEFAULT_THEME_COLOR;
 
         CommonStyles.initCommonStyles({
             accentColor: accentColor,
@@ -526,7 +526,7 @@ class TableRenderer {
                         ${this.selectionPlugin ? this.selectionPlugin.renderHeaderCheckbox() : ''}
                     </th>` : ''}
                     ${visibleColumns.map(col => this._renderHeaderCell(col, widthMap)).join('')}              
-                    ${this.actions.length ? `<th style="${actionsStyle} text-align: center; vertical-align: middle; background-color: #ffffff; border-bottom: 1px solid ${this.thBorderColor} !important; color: ${this.headerTextColor}; padding: 14px 15px;">Ações</th>` : ''}
+                    ${this.actions.length ? `<th style="${actionsStyle} text-align: center; vertical-align: middle; background-color: #ffffff; border-bottom: 1px solid ${this.thBorderColor} !important; color: ${this.accentColor}; padding: 14px 15px;">Ações</th>` : ''}
                 </tr>
             </thead>`;
     }
@@ -610,7 +610,7 @@ class TableRenderer {
 
         return `
             <th class="${baseClass} ${sortingClass}" ${dataAction} ${removeJustSorted} 
-                style="${widthStyle} vertical-align: middle; font-weight: 600; border-bottom: 1px solid ${this.thBorderColor} !important; background-color: #ffffff; color: ${this.headerTextColor}; white-space: nowrap; padding: 14px 15px; position: relative;"
+                style="${widthStyle} vertical-align: middle; font-weight: 900; border-bottom: 1px solid ${this.thBorderColor} !important; background-color: #ffffff; color: ${this.accentColor}; white-space: nowrap; padding: 14px 15px; position: relative;"
                 title="${col.title}">
                 ${contentHtml}
             </th>`;
@@ -643,7 +643,6 @@ class TableRenderer {
         if (this.selectionEnabled) {
             html += `
                 <td class="text-center tr-checkbox-cell" 
-                    data-action="select-row" data-id="${id}"
                     style="cursor: pointer; vertical-align: middle; padding: 12px 2px;">
                     ${this.selectionPlugin ? this.selectionPlugin.renderRowCheckbox(id, isChecked) : ''}
                 </td>`;
@@ -828,8 +827,8 @@ class TableRenderer {
                 containerId: `footer-container-${this.tableId}`,
                 title: this.footer.title,
                 items: this.footer.items,
-                themeColor: this.headerColor,
-                borderColor: this.thBorderColor
+                themeColor: this.accentColor,
+                borderColor: this.accentColor
             });
         }
     }

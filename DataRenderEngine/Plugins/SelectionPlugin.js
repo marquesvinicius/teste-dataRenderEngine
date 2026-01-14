@@ -65,10 +65,10 @@ class SelectionPlugin {
             customClass: customClass
         });
 
-        // Nota: O método toggleGroupSelection deve ser exposto pelo Renderer para manter o contexto correto no HTML inline
+        // Usa containerId como chave primária no registry, com verificação de existência
         return `
             <div class="nar-checkbox-container" 
-                 onclick="event.stopPropagation(); window.NestedAccordionInstances['${containerId}'].toggleGroupSelection('${uniqueId}');" 
+                 onclick="event.stopPropagation(); var inst = window.NestedAccordionInstances['${containerId}']; if(inst && inst.toggleGroupSelection) inst.toggleGroupSelection('${uniqueId}');" 
                  style="display: flex; align-items: center; justify-content: center;">
                 ${baseCb}
             </div>`;
@@ -141,14 +141,24 @@ class SelectionPlugin {
         if (this.renderer.constructor.name !== 'TableRenderer') return;
 
         const tableId = this.renderer.tableId;
-        if (!this.dataController) return;
+        if (!this.dataController) {
+            console.warn('[SelectionPlugin] ❌ Falha updateVisuals: DataController não encontrado para', tableId);
+            return;
+        }
+
+        // Debug: Logar estado atual
+        // console.log(`[SelectionPlugin] 🔄 Updating Visuals for ${tableId}. Selected Count: ${this.dataController.selectedIds.size}`);
 
         const isAllSelected = this.dataController.isAllSelected();
         const cbAll = document.getElementById(`cb-all-${tableId}`);
         if (cbAll) cbAll.checked = isAllSelected;
 
         const table = document.getElementById(tableId);
-        if (!table) return;
+        if (!table) {
+            // É normal a tabela ainda não existir durante a inicialização ou destruição
+            // console.debug(`[SelectionPlugin] ℹ️ Tabela #${tableId} ainda não montada no DOM.`);
+            return;
+        }
         const tbody = table.querySelector('tbody');
         if (!tbody) return;
 
@@ -163,8 +173,18 @@ class SelectionPlugin {
                 isSelected = this.dataController.selectedIds.has(Number(idString));
             }
 
+            // Debug individual para identificar falhas
+            // if (isSelected) console.log(`[Plugin] Row ${idString} IS SELECTED internally.`);
+
             const cb = tr.querySelector(`input[type="checkbox"]`);
-            if (cb) cb.checked = isSelected;
+            if (cb) {
+                cb.checked = isSelected;
+                // Forçar update visual do checkbox (alguns browsers podem lagar)
+                if (isSelected) cb.setAttribute('checked', 'checked'); 
+                else cb.removeAttribute('checked');
+            } else {
+                // console.warn(`[Plugin] Checkbox not found for row ${idString}`);
+            }
 
             if (isSelected) {
                 tr.classList.add('selected-row');

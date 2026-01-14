@@ -70,7 +70,7 @@ class TableStyle {
                 .tr-table-wrapper tbody tr:hover { 
                     background-color: ${hoverBg} !important; 
                     transform: translateY(-1px);
-                    box-shadow: 0 2px 4px rgba(118, 201, 110, 0.1);
+                    box-shadow: 0 2px 4px ${applyOpacity ? applyOpacity(accentColor, 0.1) : 'rgba(0,0,0,0.1)'};
                     position: relative; 
                     z-index: 2;          
                 }
@@ -129,7 +129,7 @@ class TableStyle {
                 .tr-table-wrapper tbody tr.selected-row:hover { 
                     background-color: ${selectedHoverBg} !important; 
                     transform: translateY(-1px);
-                    box-shadow: 0 2px 4px rgba(118, 201, 110, 0.1);
+                    box-shadow: 0 2px 4px ${applyOpacity ? applyOpacity(accentColor, 0.1) : 'rgba(0,0,0,0.1)'};
                     z-index: 2;
                     position: relative;
                 }

@@ -2,6 +2,30 @@
 
 O **DataRenderEngine** é a nova arquitetura para renderização de tabelas e accordions no sistema Vólus. Ele substitui as antigas funções monolíticas por um sistema modular, seguro e extensível baseado em **Core + Plugins**.
 
+## 📦 Dependências (Carregadas Automaticamente)
+
+O DataRenderEngine **carrega automaticamente** as seguintes bibliotecas se não estiverem presentes:
+
+- **jQuery 3.6.0** - Manipulação de DOM e eventos
+- **Bootstrap 4.6.2 CSS** - Layout e componentes visuais
+- **Font Awesome 6.0.0** - Ícones
+
+> ✅ **Portabilidade Total:** Basta incluir o `index.js` e o motor cuidará do resto!
+
+```html
+<!-- Apenas isso é necessário! -->
+<script src="DataRenderEngine/index.js"></script>
+```
+
+**Opcional:** Se preferir gerenciar as dependências manualmente (para controle de versão ou cache), adicione-as antes do motor:
+
+```html
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="DataRenderEngine/index.js"></script>
+```
+
 ## 🚀 Guia Rápido
 
 Para renderizar uma tabela moderna, utilize o método `smartRender`. Ele gerencia automaticamente a injeção de dependências e configuração.

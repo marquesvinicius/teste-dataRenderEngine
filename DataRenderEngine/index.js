@@ -36,38 +36,6 @@
         { path: 'Plugins/PluginStyles.js' }
     ];
 
-    // Dependências Externas (Bootstrap, jQuery, FontAwesome)
-    // O motor verificará se já existem na página. Se não, carregará automaticamente.
-    const EXTERNAL_DEPENDENCIES = [
-        {
-            name: 'jQuery',
-            type: 'script',
-            src: 'https://code.jquery.com/jquery-3.6.0.min.js',
-            check: () => typeof window.jQuery !== 'undefined'
-        },
-        {
-            name: 'Bootstrap CSS',
-            type: 'style',
-            src: 'https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css',
-            check: () => {
-                // Verifica se há algum link com bootstrap no href
-                return Array.from(document.querySelectorAll('link')).some(l => l.href.includes('bootstrap'));
-            }
-        },
-        {
-            name: 'Bootstrap JS',
-            type: 'script',
-            src: 'https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js',
-            check: () => typeof window.jQuery !== 'undefined' && typeof window.jQuery.fn.modal !== 'undefined'
-        },
-        {
-            name: 'FontAwesome',
-            type: 'style',
-            src: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css',
-            check: () => Array.from(document.querySelectorAll('link')).some(l => l.href.includes('font-awesome') || l.href.includes('all.min.css'))
-        }
-    ];
-
     const currentScript = document.currentScript || document.querySelector('script[src*="DataRenderEngine/index.js"]');
     let basePath = '../static/js/DataRenderEngine';
     if (currentScript) {
@@ -80,6 +48,71 @@
 
     const version = currentScript?.dataset?.version || '';
     const versionParam = version ? `?v=${version}` : '';
+
+    /**
+     * Carrega automaticamente as dependências obrigatórias (jQuery, Bootstrap, Font Awesome).
+     * Injeta as bibliotecas no DOM se não estiverem presentes.
+     * @returns {Promise<void>}
+     */
+    async function loadDependencies() {
+        const dependencies = [];
+        
+        // Verifica e carrega jQuery
+        if (typeof $ === 'undefined' && typeof jQuery === 'undefined') {
+            console.info('%c[DataRenderEngine] 📦 Carregando jQuery...', 'color: #2196F3;');
+            dependencies.push(loadExternalScript('https://code.jquery.com/jquery-3.6.0.min.js'));
+        }
+        
+        // Verifica e carrega Bootstrap CSS
+        const hasBootstrap = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+            .some(link => link.href.toLowerCase().includes('bootstrap'));
+        if (!hasBootstrap) {
+            console.info('%c[DataRenderEngine] 📦 Carregando Bootstrap CSS...', 'color: #2196F3;');
+            loadExternalCSS('https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css');
+        }
+        
+        // Verifica e carrega Font Awesome
+        const hasFontAwesome = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+            .some(link => link.href.toLowerCase().includes('font-awesome') || 
+                         link.href.toLowerCase().includes('fontawesome'));
+        if (!hasFontAwesome) {
+            console.info('%c[DataRenderEngine] 📦 Carregando Font Awesome...', 'color: #2196F3;');
+            loadExternalCSS('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css');
+        }
+        
+        // Aguarda carregamento de scripts (CSS é assíncrono e não bloqueia)
+        if (dependencies.length > 0) {
+            await Promise.all(dependencies);
+            console.info('%c[DataRenderEngine] ✅ Dependências carregadas com sucesso!', 'color: #4CAF50; font-weight: bold;');
+        }
+    }
+
+    /**
+     * Carrega um script externo e retorna uma Promise.
+     * @param {string} src - URL do script
+     * @returns {Promise<void>}
+     */
+    function loadExternalScript(src) {
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = src;
+            script.async = false;
+            script.onload = () => resolve();
+            script.onerror = () => reject(new Error(`Falha ao carregar: ${src}`));
+            document.head.appendChild(script);
+        });
+    }
+
+    /**
+     * Carrega uma folha de estilos externa (não bloqueia execução).
+     * @param {string} href - URL do CSS
+     */
+    function loadExternalCSS(href) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = href;
+        document.head.appendChild(link);
+    }
 
     function loadScript(src) {
         return new Promise((resolve, reject) => {
@@ -95,37 +128,6 @@
         });
     }
 
-    function loadStyle(src) {
-        return new Promise((resolve, reject) => {
-            const existingLink = document.querySelector(`link[href="${src}"]`);
-            if (existingLink) { resolve(); return; }
-            const link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = src;
-            link.onload = () => resolve();
-            link.onerror = () => reject(new Error(`Falha ao carregar estilo: ${src}`));
-            document.head.appendChild(link);
-        });
-    }
-
-    async function loadExternalDependencies() {
-        for (const dep of EXTERNAL_DEPENDENCIES) {
-            if (dep.check && dep.check()) {
-                // Já carregado
-                continue;
-            }
-            try {
-                if (dep.type === 'script') {
-                    await loadScript(dep.src);
-                } else if (dep.type === 'style') {
-                    await loadStyle(dep.src);
-                }
-            } catch (error) {
-                console.warn(`DataRenderEngine: Aviso - Falha ao carregar dependência opcional ${dep.name}.`, error);
-            }
-        }
-    }
-
     /**
      * Orquestra o carregamento de todos os sub-módulos do motor.
      * Itera sobre a configuração `MODULES_CONFIG` para carregar scripts sequencialmente.
@@ -133,13 +135,14 @@
      */
     async function loadDataRenderEngine() {
         try {
-            // 1. Carrega dependências externas (se necessário)
-            await loadExternalDependencies();
-
-            // 2. Carrega módulos internos
+            // Carrega dependências automaticamente se ausentes
+            await loadDependencies();
+            
+            // Carrega módulos do motor
             for (const module of MODULES_CONFIG) {
                 await loadScript(`${basePath}/${module.path}${versionParam}`);
             }
+            
             initializeDataRenderEngine();
         } catch (error) {
             console.error('DataRenderEngine: Erro ao carregar módulos', error);

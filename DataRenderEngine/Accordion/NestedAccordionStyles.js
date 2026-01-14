@@ -13,7 +13,7 @@ class NestedAccordionStyle {
      * @returns {string} CSS formatado.
      */
     static getStyles(config = {}) {
-        const { primaryColor = '#0056b3', applyOpacity } = config;
+        const { primaryColor = RendererUtils.DEFAULT_THEME_COLOR, applyOpacity } = config;
         const primaryColorLight = applyOpacity
             ? applyOpacity(primaryColor, 0.1)
             : `color-mix(in srgb, ${primaryColor} 10%, transparent)`;

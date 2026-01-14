@@ -32,7 +32,7 @@ class NestedAccordionRenderer {
         this.columns.forEach(col => {
             if (col.defaultHidden) this.hiddenColumns.add(col.field);
         });
-        this.primaryColor = RendererUtils.resolveThemeColor(config.primaryColor, '#333333');
+        this.primaryColor = RendererUtils.resolveThemeColor(config.primaryColor);
         this.levelColors = config.levelColors || this.generateLevelColors(this.primaryColor);
         this.showCount = config.showCount ?? true;
         this.titleBadges = config.titleBadges || [];
@@ -206,15 +206,39 @@ class NestedAccordionRenderer {
         }
     }
     generateLevelColors(baseColor) {
-        return [
-            { border: baseColor, bg: '#fff' },
-            { border: RendererUtils.applyOpacity(baseColor, 0.7), bg: '#fff' },
-            { border: RendererUtils.applyOpacity(baseColor, 0.4), bg: '#fff' },
-            { border: '#e0e0e0', bg: '#fff' }
-        ];
+        const theme = [];
+        
+        for (let i = 0; i < 6; i++) {
+            // 1. Tenta ler override explícito do CSS (definido no root da página/produto)
+            const cssBorder = RendererUtils.getCssVariable(`--nar-level-${i}-border`);
+            const cssBg = RendererUtils.getCssVariable(`--nar-level-${i}-bg`);
+
+            if (cssBorder) {
+                // Se existe variável CSS, usa ela (Prioridade Alta)
+                theme.push({ 
+                    border: cssBorder.trim(), 
+                    bg: cssBg ? cssBg.trim() : '#fff' 
+                });
+            } else {
+                // 2. Fallback: Geração Automática baseada na Cor Primária
+                // Estratégia: reduz a opacidade/intensidade 15% a cada nível
+                const opacity = Math.max(0.2, 1 - (i * 0.33)); 
+                
+                const generatedColor = (i === 0) 
+                    ? baseColor 
+                    : RendererUtils.applyOpacity(baseColor, opacity);
+
+                theme.push({
+                    border: generatedColor,
+                    bg: '#fff'
+                });
+            }
+        }
+        
+        return theme;
     }
     initStyles() {
-        const primaryColor = this.primaryColor || '#0056b3';
+        const primaryColor = this.primaryColor || RendererUtils.DEFAULT_THEME_COLOR;
 
         CommonStyles.initCommonStyles({
             accentColor: primaryColor,
@@ -275,25 +299,24 @@ class NestedAccordionRenderer {
         });
 
         // 2. Delegate to Leaf Tables (Nested Table Level)
-        // Find all initialized table instances within this accordion
-        const tables = document.querySelectorAll(`#nar-content-${this.containerId} .tr-table-wrapper table`);
-        tables.forEach(table => {
-            // Check global registry for the table instance
-            // Note: TableRenderer usually registers itself in window.TableInstances using containerId.
-            // In nested context, the containerId passed to BasicTableRenderer.render is the DIV id (leaf-content-${uniqueId}).
-
-            // table is the <table> element inside the wrapper. 
-            // We need to find the container div that was passed to BasicTableRenderer.render
-            const leafContainer = table.closest('.nar-leaf-container');
-
-            if (leafContainer && leafContainer.id) {
-                const leafInstance = window.TableInstances[leafContainer.id];
-                if (leafInstance && typeof leafInstance.updateSelectionVisuals === 'function') {
+        // Busca todos os containers de folha dentro do accordion
+        const leafContainers = document.querySelectorAll(`#nar-content-${this.containerId} .nar-leaf-container`);
+        
+        // console.log(`[NestedAccordion] updateSelectionVisuals: Found ${leafContainers.length} leaf containers in #${this.containerId}`);
+        
+        leafContainers.forEach(leafContainer => {
+            if (!leafContainer.id) return;
+            
+            const leafInstance = window.TableInstances[leafContainer.id];
+            if (leafInstance) {
+                // console.log(`[NestedAccordion] Delegating to leaf table #${leafContainer.id}`);
+                if (typeof leafInstance.updateSelectionVisuals === 'function') {
                     leafInstance.updateSelectionVisuals();
-                } else if (leafInstance && leafInstance.selectionPlugin && typeof leafInstance.selectionPlugin.updateVisuals === 'function') {
-                    // Fallback directo ao plugin se o metodo nao existir na instancia
-                    leafInstance.selectionPlugin.updateVisuals(leafInstance);
+                } else if (leafInstance.selectionPlugin && typeof leafInstance.selectionPlugin.updateVisuals === 'function') {
+                    leafInstance.selectionPlugin.updateVisuals();
                 }
+            } else {
+                console.warn(`[NestedAccordion] Instance not found for leaf container #${leafContainer.id}`);
             }
         });
     }
@@ -894,22 +917,39 @@ class BasicNestedAccordionRenderer {
         const rootAllowSearch = resolveRootFlag('allowSearch');
         const rootAllowColMan = resolveRootFlag('allowColumnManagement');
 
-        const resolvedKeyField = (info.Tabela && info.Tabela.LinkTable && info.Tabela.LinkTable[1]) ? info.Tabela.LinkTable[1] :
+        // Prioridade KeyField: 
+        // 1. Config explícita (globalOpts/specific)
+        // 2. Metadados de LinkTable
+        // 3. Metadados de Colunas (PK ou primeira coluna)
+        // 4. Fallback 'CODIGO'
+        const resolvedKeyField = 
+            (globalOpts.keyField) ? globalOpts.keyField :
+            (accordionSpecificOpts.keyField) ? accordionSpecificOpts.keyField :
+            (info.Tabela && info.Tabela.LinkTable && info.Tabela.LinkTable[1]) ? info.Tabela.LinkTable[1] :
+            (info.Tabela && info.Tabela.PK) ? info.Tabela.PK :
             (info.Tabela && info.Tabela.Columns && info.Tabela.Columns[0]) ? info.Tabela.Columns[0].field :
-                (info.Tabela && info.Tabela.Campos) ? info.Tabela.Campos[0] : 'CODIGO';
+            (info.Tabela && info.Tabela.Campos) ? info.Tabela.Campos[0] : 'CODIGO';
 
-        const renderer = new NestedAccordionRenderer({
+        // console.log('[NestedAccordion] Resolved KeyField:', resolvedKeyField);
+
+        // Solução para sincronização de seleção e registro robusto:
+        // Mantemos um registro interno de todas as instâncias de tabela folha
+        const leafInstancesMap = new Map();
+
+        // Função placeholder - será substituída
+        let leafRenderFn = () => {};
+
+        const rendererConfig = {
             keyField: resolvedKeyField,
             containerId: containerId,
             levels: levels,
-            data: finalData,
+            data: [], 
             ...globalOpts,
             ...accordionSpecificOpts,
-            // Mantemos defaults do Accordion aqui pois ele é o "Componente" neste contexto
             pagination: accordionSpecificOpts.pagination ?? globalOpts.pagination,
             forceCompactPagination: accordionSpecificOpts.forceCompactPagination ?? globalOpts.forceCompactPagination,
             pageSize: accordionSpecificOpts.pageSize ?? globalOpts.pageSize ?? 10,
-            primaryColor: accordionSpecificOpts.primaryColor || '#333333',
+            primaryColor: RendererUtils.resolveThemeColor(accordionSpecificOpts.primaryColor),
             titleBadges: accordionSpecificOpts.titleBadges || [],
             emptyState: options.emptyState,
             columns: finalColumns,
@@ -919,108 +959,149 @@ class BasicNestedAccordionRenderer {
                 if (p.constructor.name === 'SearchPlugin') return rootAllowSearch === true;
                 return true;
             }),
+            // Wrapper que delega para a função real
             renderLeaf: (items, container, leafId) => {
-                const accordionInstance = window.TableInstances[containerId];
-                let columnsToRender = finalColumns;
-
-                // Respeita colunas ocultas pelo ColumnManager do Accordion (se houver)
-                if (accordionInstance && accordionInstance.hiddenColumns && accordionInstance.hiddenColumns.size > 0) {
-                    columnsToRender = finalColumns.filter(col => !accordionInstance.hiddenColumns.has(col.field));
-                }
-
-                if (!Array.isArray(columnsToRender) || columnsToRender.length === 0) {
-                    container.innerHTML = '<div class="text-muted p-2">Nenhuma coluna visível.</div>';
-                    return;
-                }
-
-                // Clonagem inteligente dos plugins para a folha
-                // Resolve flags locais para a folha (Leaf)
-                const resolveLeafFlag = (prop) => {
-                    if (tableSpecificOpts[prop] !== undefined) return tableSpecificOpts[prop];
-                    if (globalOpts[prop] !== undefined) return globalOpts[prop];
-                    return false;
-                };
-                const leafAllowSearch = resolveLeafFlag('allowSearch');
-                const leafAllowColMan = resolveLeafFlag('allowColumnManagement');
-
-                const leafPlugins = plugins
-                    .filter(p => {
-                        // Filtra plugins para a folha baseado nas configs da tabela
-                        if (p.constructor.name === 'ColumnManagerPlugin' && !leafAllowColMan) return false;
-                        if (p.constructor.name === 'SearchPlugin' && !leafAllowSearch) return false;
-                        // O SelectionPlugin do pai (Accordion) NÃO deve ser passado para a folha.
-                        // A folha deve instanciar seu próprio SelectionPlugin se selection: true.
-                        if (p.constructor.name === 'SelectionPlugin') return false;
-                        return true;
-                    })
-                    .map(p => {
-                        if (p && p.constructor) {
-                            // Special Case: ColumnManager precisa de persistenceKey única por folha
-                            if (p.constructor.name === 'ColumnManagerPlugin') {
-                                const baseKey = p.persistenceKey || containerId || 'auto-gen-accord';
-                                return new p.constructor({
-                                    persistenceKey: `${baseKey}_L_${leafId}`
-                                });
-                            }
-                            // Special Case: SearchPlugin é stateless, nova instância é segura
-                            if (p.constructor.name === 'SearchPlugin') return new p.constructor();
-                        }
-                        return p;
-                    });
-
-                // Construção da Configuração da Tabela Folha (Pass-Through)
-                // Prioridade: Config Específica da Tabela > Config Global > Defaults do TableRenderer (implícitos)
-                BasicTableRenderer.render(
-                    container.id,
-                    items,
-                    columnsToRender,
-                    {
-                        // Defaults sensatos para contexto de Accordion, mas sobrescrevíveis
-                        pageSize: 10,
-                        forceCompactPagination: true,
-                        isInAccordion: true,
-
-                        // Merge de Configurações (Spread puro)
-                        ...globalOpts,
-                        ...tableSpecificOpts, // tableSpecificOpts ganha de globalOpts
-
-                        // Garante que flags críticas sejam respeitadas explicitamente na folha
-                        allowSearch: leafAllowSearch,
-                        allowColumnManagement: leafAllowColMan,
-
-                        // Overrides Críticos
-                        plugins: leafPlugins,
-                        tableId: `tbl-nested-${leafId}`,
-                        keyField: resolvedKeyField,
-                        actions: actions,
-                        actionsColumnWidth: actionsColumnWidth,
-                        onRowClick: onRowClick,
-
-                        // Lógica de Seleção Híbrida (Herança com Override)
-                        // 1. Se a tabela definiu explicitamente (true ou false), respeita a tabela (Cozinheiro manda).
-                        // 2. Se a tabela é omissa (undefined), herda do Accordion (Garçom sugere o padrão da casa).
-                        selection: (tableSpecificOpts.selection !== undefined)
-                            ? tableSpecificOpts.selection
-                            : (accordionInstance && accordionInstance.selectionEnabled),
-
-                        // Sincronização de Estado de Seleção
-                        // Passamos o Set do Accordion para a Tabela Folha usar como referência externa.
-                        // Isso garante que seleções feitas na folha reflitam no estado global do accordion.
-                        externalSelectedIds: accordionInstance ? accordionInstance.dataController.selectedIds : null,
-
-                        onSelectionChange: (selectedItems) => {
-                            if (accordionInstance) {
-                                // Prevent full re-render on selection change to avoid state loss (pagination reset)
-                                accordionInstance.updateSelectionVisuals();
-                            }
-                        },
-
-                        // Extra Configs (sempre por último para garantir override se necessário)
-                        ...(tableSpecificOpts.extraConfig || {}),
-                    }
-                );
+                leafRenderFn(items, container, leafId);
             }
-        });
+        };
+
+        const renderer = new NestedAccordionRenderer(rendererConfig);
+        
+        // Expor o mapa na instância para uso no updateSelectionVisuals
+        renderer.leafInstances = leafInstancesMap;
+        
+        // Hook no setData para limpar instâncias antigas
+        const originalSetData = renderer.dataController.setData.bind(renderer.dataController);
+        renderer.dataController.setData = (data) => {
+            leafInstancesMap.clear(); // Limpa registro de folhas antigas
+            originalSetData(data);
+        };
+
+        // Override inteligente do updateSelectionVisuals para usar o MAP
+        renderer.updateSelectionVisuals = function() {
+            if (!this.selectionEnabled || !this.selectionPlugin) return;
+
+            // 1. Update Group Headers (Accordion Level)
+            const headers = document.querySelectorAll(`#nar-content-${this.containerId} .nar-header`);
+            headers.forEach(header => {
+                const toggleId = header.getAttribute('data-toggle-id');
+                const checkboxContainer = header.querySelector('.nar-checkbox-container');
+                if (toggleId && checkboxContainer) {
+                    const items = this._groupItemsMap.get(toggleId);
+                    let isSelected = false;
+                    if (items && items.length > 0) {
+                        isSelected = items.every(item =>
+                            this.dataController.selectedIds.has(String(item[this.dataController.keyField]))
+                        );
+                    }
+                    const input = checkboxContainer.querySelector('input[type="checkbox"]');
+                    if (input) input.checked = isSelected;
+                    const card = document.getElementById(`card-${toggleId}`);
+                    if (card) {
+                        if (isSelected) card.classList.add('selected');
+                        else card.classList.remove('selected');
+                    }
+                }
+            });
+
+            // 2. Delegate to Leaf Tables (Direct Instance Access)
+            // console.log(`[NestedAccordion] updateSelectionVisuals: Updating ${this.leafInstances.size} leaf tables directly.`);
+            this.leafInstances.forEach((leafInstance, leafId) => {
+               if (leafInstance && typeof leafInstance.updateSelectionVisuals === 'function') {
+                   leafInstance.updateSelectionVisuals();
+               } else if (leafInstance && leafInstance.selectionPlugin && typeof leafInstance.selectionPlugin.updateVisuals === 'function') {
+                   leafInstance.selectionPlugin.updateVisuals();
+               }
+            });
+        };
+
+        // Captura referência do selectedIds
+        const sharedSelectedIds = renderer.dataController.selectedIds;
+
+        // Agora definimos a função real de renderLeaf
+        leafRenderFn = (items, container, leafId) => {
+            let columnsToRender = finalColumns;
+
+            if (renderer.hiddenColumns && renderer.hiddenColumns.size > 0) {
+                columnsToRender = finalColumns.filter(col => !renderer.hiddenColumns.has(col.field));
+            }
+
+            if (!Array.isArray(columnsToRender) || columnsToRender.length === 0) {
+                container.innerHTML = '<div class="text-muted p-2">Nenhuma coluna visível.</div>';
+                return;
+            }
+
+            const resolveLeafFlag = (prop) => {
+                if (tableSpecificOpts[prop] !== undefined) return tableSpecificOpts[prop];
+                if (globalOpts[prop] !== undefined) return globalOpts[prop];
+                return false;
+            };
+            const leafAllowSearch = resolveLeafFlag('allowSearch');
+            const leafAllowColMan = resolveLeafFlag('allowColumnManagement');
+
+            const leafPlugins = plugins
+                .filter(p => {
+                    if (p.constructor.name === 'ColumnManagerPlugin' && !leafAllowColMan) return false;
+                    if (p.constructor.name === 'SearchPlugin' && !leafAllowSearch) return false;
+                    if (p.constructor.name === 'SelectionPlugin') return false;
+                    return true;
+                })
+                .map(p => {
+                    if (p && p.constructor) {
+                        if (p.constructor.name === 'ColumnManagerPlugin') {
+                            const baseKey = p.persistenceKey || containerId || 'auto-gen-accord';
+                            return new p.constructor({ persistenceKey: `${baseKey}_L_${leafId}` });
+                        }
+                        if (p.constructor.name === 'SearchPlugin') return new p.constructor();
+                    }
+                    return p;
+                });
+
+            // Renderiza e CAPTURA a instância
+            const leafInstance = BasicTableRenderer.render(
+                container.id,
+                items,
+                columnsToRender,
+                {
+                    pageSize: 10,
+                    forceCompactPagination: true,
+                    isInAccordion: true,
+                    ...globalOpts,
+                    ...tableSpecificOpts,
+                    allowSearch: leafAllowSearch,
+                    allowColumnManagement: leafAllowColMan,
+                    plugins: leafPlugins,
+                    tableId: `tbl-nested-${leafId}`,
+                    keyField: resolvedKeyField,
+                    actions: actions,
+                    actionsColumnWidth: actionsColumnWidth,
+                    onRowClick: onRowClick,
+                    selection: (tableSpecificOpts.selection !== undefined)
+                        ? tableSpecificOpts.selection
+                        : renderer.selectionEnabled,
+                    
+                    externalSelectedIds: sharedSelectedIds,
+
+                    onSelectionChange: (selectedItems) => {
+                        if (renderer && typeof renderer.updateSelectionVisuals === 'function') {
+                            renderer.updateSelectionVisuals();
+                        }
+                    },
+                    ...(tableSpecificOpts.extraConfig || {}),
+                }
+            );
+
+            // Registra a instância no mapa
+            if (leafInstance) {
+                leafInstancesMap.set(leafId, leafInstance);
+            }
+        };
+
+        // Renderiza dados reais
+        if (Array.isArray(finalData) && finalData.length > 0) {
+            renderer.dataController.setData(finalData);
+        }
+
         if (!window.TableInstances) window.TableInstances = {};
         window.TableInstances[containerId] = renderer;
         renderer.metaInfo = info;

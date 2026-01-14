@@ -51,6 +51,16 @@ document.addEventListener('DataRenderEngineReady', function() {
             }]
         }
     });
+
+    // Renderiza Footer Global Customizado usando RendererUtils
+    const totalSalarios = meusDados.reduce((acc, curr) => acc + (curr.SALARIO || 0), 0);
+    const totalFormatado = RendererUtils.formatters.currency(totalSalarios);
+
+    RendererUtils.renderGlobalFooter('container-tabela', [
+        { label: 'Total de Funcionários', value: meusDados.length },
+        { label: 'Folha Salarial Mensal', value: totalFormatado, valueColor: '#28a745' }
+    ], { 
+        title: 'Resumo Corporativo',    });
 });
 
 // Função para exibir itens selecionados em um Modal Bootstrap usando DataRenderEngine

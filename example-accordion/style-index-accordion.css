@@ -1,7 +1,12 @@
+:root {
+    --primary-color: #0056b3;
+    --table-th-border-color: #dee2e6;
+}
+
 body {
     background-color: #f4f6f9;
     padding: 20px;
-    font-family: 'Mulish', sans-serif;
+    font-family: 'Mulish', sans-serif !important;
 }
 
 .container-fluid {

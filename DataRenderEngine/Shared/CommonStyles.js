@@ -7,7 +7,7 @@ class CommonStyles {
     static _styleCache = new Map();
 
     static _getCacheKey(config) {
-        const accentColor = config.accentColor || '#0056b3';
+        const accentColor = config.accentColor || RendererUtils.DEFAULT_THEME_COLOR;
         return `common-${accentColor}`;
     }
 
@@ -42,7 +42,7 @@ class CommonStyles {
     }
 
     static getPaginationStyles(config = {}) {
-        const { accentColor = '#0056b3', applyOpacity } = config;
+        const { accentColor = RendererUtils.DEFAULT_THEME_COLOR, applyOpacity } = config;
         const hoverBg = applyOpacity
             ? applyOpacity(accentColor, 0.15)
             : `color-mix(in srgb, var(--primary-color, ${accentColor}) 15%, transparent)`;
@@ -241,7 +241,7 @@ class CommonStyles {
     }
 
     static getCheckboxStyles(config = {}) {
-        const { accentColor = '#0056b3' } = config;
+        const { accentColor = RendererUtils.DEFAULT_THEME_COLOR } = config;
         return `
             input[type="checkbox"].custom-checkbox,
             .custom-checkbox {
@@ -277,7 +277,7 @@ class CommonStyles {
     }
 
     static getInlineActionButtonStyles(config = {}) {
-        const { accentColor = '#0056b3', applyOpacity } = config;
+        const { accentColor = RendererUtils.DEFAULT_THEME_COLOR, applyOpacity } = config;
         const hoverBg = applyOpacity
             ? applyOpacity(accentColor, 0.1)
             : `color-mix(in srgb, ${accentColor} 10%, transparent)`;
@@ -291,7 +291,7 @@ class CommonStyles {
     }
 
     static getToggleSwitchStyles(config = {}) {
-        const { accentColor = '#0056b3' } = config;
+        const { accentColor = RendererUtils.DEFAULT_THEME_COLOR } = config;
         return `
             .tr-toggle-wrapper {
                 display: flex;
@@ -349,7 +349,7 @@ class CommonStyles {
     }
 
     static getActionDropdownStyles(config = {}) {
-        const { accentColor = '#0056b3', applyOpacity } = config;
+        const { accentColor = RendererUtils.DEFAULT_THEME_COLOR, applyOpacity } = config;
         const softBg = applyOpacity
             ? applyOpacity(accentColor, 0.15)
             : `rgba(0, 0, 0, 0.05)`;
@@ -441,6 +441,26 @@ class CommonStyles {
         `;
     }
 
+    static getTypographyStyles() {
+        return `
+            body {
+                font-family: 'Mulish', sans-serif;
+            }
+            .nar-container,
+            .tr-table-wrapper,
+            .tr-controls,
+            .tr-actions-menu,
+            .tr-input-wrapper input,
+            .tr-search-input,
+            .page-link,
+            .status-badge,
+            .btn,
+            .form-control {
+                font-family: 'Mulish', sans-serif !important;
+            }
+        `;
+    }
+
     /**
      * Agrega todos os módulos de estilo em uma única string CSS.
      * Utiliza cache interno baseado no `config.accentColor` para performance.
@@ -454,6 +474,7 @@ class CommonStyles {
             return CommonStyles._styleCache.get(cacheKey);
         }
         const styles = `
+            ${CommonStyles.getTypographyStyles()}
             ${CommonStyles.getPaginationStyles(config)}
             ${CommonStyles.getStatusBadgeStyles()}
             ${CommonStyles.getSearchStyles()}

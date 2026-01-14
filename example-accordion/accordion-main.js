@@ -4,22 +4,22 @@ const dadosAccordion = [
     { ID: 101, NOME: 'João Silva', ESTADO: 'SP', CIDADE: 'São Paulo', CARGO: 'Desenvolvedor', STATUS: 'Ativo', SALARIO: 5500.00 },
     { ID: 102, NOME: 'Maria Souza', ESTADO: 'SP', CIDADE: 'São Paulo', CARGO: 'Designer', STATUS: 'Férias', SALARIO: 4800.50 },
     { ID: 103, NOME: 'Roberto Santos', ESTADO: 'SP', CIDADE: 'Campinas', CARGO: 'Gerente', STATUS: 'Ativo', SALARIO: 12000.00 },
-    
+
     // RJ - Rio de Janeiro
     { ID: 201, NOME: 'Ana Costa', ESTADO: 'RJ', CIDADE: 'Rio de Janeiro', CARGO: 'Analista', STATUS: 'Inativo', SALARIO: 3200.00 },
     { ID: 202, NOME: 'Lucas Lima', ESTADO: 'RJ', CIDADE: 'Niterói', CARGO: 'QA', STATUS: 'Ativo', SALARIO: 4100.00 },
-    
+
     // MG - Minas Gerais
     { ID: 301, NOME: 'Carlos Oliveira', ESTADO: 'MG', CIDADE: 'Belo Horizonte', CARGO: 'DBA', STATUS: 'Ativo', SALARIO: 8500.00 },
     { ID: 302, NOME: 'Fernanda Lima', ESTADO: 'MG', CIDADE: 'Uberlândia', CARGO: 'UX Writer', STATUS: 'Em Análise', SALARIO: 4500.00 },
-    
+
     // Outros
     { ID: 401, NOME: 'Paulo Souza', ESTADO: 'RS', CIDADE: 'Porto Alegre', CARGO: 'DevOps', STATUS: 'Ativo', SALARIO: 9200.00 },
     { ID: 402, NOME: 'Juliana Dias', ESTADO: 'PR', CIDADE: 'Curitiba', CARGO: 'Product Owner', STATUS: 'Bloqueado', SALARIO: 10500.00 },
     { ID: 403, NOME: 'Marcos Rocha', ESTADO: 'PR', CIDADE: 'Londrina', CARGO: 'Tech Lead', STATUS: 'Ativo', SALARIO: 15000.00 }
 ];
 
-document.addEventListener('DataRenderEngineReady', function() {
+document.addEventListener('DataRenderEngineReady', function () {
     console.log('Motor pronto! Iniciando renderização do Accordion.');
 
     // Limpa msg de carregamento
@@ -34,11 +34,11 @@ document.addEventListener('DataRenderEngineReady', function() {
      */
     RendererUtils.smartRender('container-accordion', dadosAccordion, {
         // Define a estrutura de níveis (Agrupamento)
-        levels: ['ESTADO', 'CIDADE'],
-        
+        levels: ['ESTADO', 'CIDADE', 'CARGO', 'STATUS'],
+
         persistenceKey: 'accordion-teste-v1',
         primaryColor: '#0056b3', // Cor temática (herda do CSS se não definir, mas bom forçar aqui para exemplo)
-        
+        keyField: 'ID',
         // Configurações do Accordion (Pai)
         accordion: {
             showCount: true,      // Mostra contagem de itens no título
@@ -49,7 +49,7 @@ document.addEventListener('DataRenderEngineReady', function() {
 
         // Configurações da Tabela Folha (Filho)
         table: {
-            keyField: 'ID',
+
             selection: true, // Checkboxes na tabela
             actions: [{
                 icon: 'fa fa-pencil',
@@ -64,9 +64,20 @@ document.addEventListener('DataRenderEngineReady', function() {
             { field: 'NOME', title: 'Nome do Cliente', sortable: true },
             { field: 'CARGO', title: 'Cargo', width: '150px' },
             { field: 'SALARIO', title: 'Salário', type: 'currency', width: '120px' },
-            { field: 'STATUS', title: 'Situação', align: 'center', width: '100px', 
-              formatter: (val) => TableRenderer.getStatusBadge(val) 
+            {
+                field: 'STATUS', title: 'Situação', align: 'center', width: '100px',
+                formatter: (val) => TableRenderer.getStatusBadge(val)
             }
         ]
     });
+
+    // Renderiza Footer Global Customizado usando RendererUtils
+    const totalSalariosAccordion = dadosAccordion.reduce((acc, curr) => acc + (curr.SALARIO || 0), 0);
+    const totalFormatadoAccordion = RendererUtils.formatters.currency(totalSalariosAccordion);
+
+    RendererUtils.renderGlobalFooter('container-accordion', [
+        { label: 'Total de Clientes', value: dadosAccordion.length },
+        { label: 'Volume Total de Salários', value: totalFormatadoAccordion }
+    ], { 
+        title: 'Totais da Carteira'    });
 });

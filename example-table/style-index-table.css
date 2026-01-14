@@ -1,11 +1,10 @@
 :root {
     --primary-color: #0056b3;
-    /* Ou a cor exata do PortalRefeicao */
     --table-th-border-color: #dee2e6;
 }
 
 body {
-    font-family: 'Mulish', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Mulish', sans-serif;
     padding: 20px;
     background-color: #f4f6f9;
 }

@@ -12,6 +12,12 @@ class RendererUtils {
     static _instances = new Map();
 
     /**
+     * Cor padrão neutra usada como fallback quando nenhuma cor de tema é detectada.
+     * Este valor deve ser agnóstico a qualquer portal específico.
+     */
+    static DEFAULT_THEME_COLOR = '#333333';
+
+    /**
      * Inicializador de contexto para páginas com grids.
      * Detecta jQuery e decide entre executar callback de carga ou exibir estado de espera.
      * 
@@ -905,7 +911,7 @@ class RendererUtils {
         const { containerId, title, items, themeColor, borderColor } = config;
         const container = document.getElementById(containerId);
         if (!container) return;
-        const safeThemeColor = themeColor || RendererUtils.getThemeColor() || '#333333';
+        const safeThemeColor = RendererUtils.resolveThemeColor(themeColor);
         const safeBorderColor = borderColor || safeThemeColor;
         const safeTitle = title || 'Total';
         let html = `
@@ -1156,7 +1162,7 @@ class RendererUtils {
             }
         });
     }
-    static resolveThemeColor(configColor, fallback = '#333333') {
+    static resolveThemeColor(configColor, fallback = RendererUtils.DEFAULT_THEME_COLOR) {
         const detected = RendererUtils.getThemeColor();
         const cssPrimary = RendererUtils.getCssVariable('--primary-color');
         return configColor || detected || cssPrimary || fallback;
@@ -1233,7 +1239,14 @@ class DataRenderFactory {
         $(`#${containerId}-footer-global`).remove();
 
         const layoutNoHtml = $container.attr('data-layout');
-        const isTable = (info.IsTable !== undefined) ? info.IsTable : (layoutNoHtml !== 'accordion');
+        
+        // Prioriza config.levels sobre data-layout do HTML para melhor portabilidade
+        const hasConfigLevels = config.levels && config.levels.length > 0;
+        const hasAccordionConfig = config.accordion?.levels?.length > 0;
+        const hasBackendLevels = info.Accordion?.Niveis?.length > 0;
+        const shouldBeAccordion = hasConfigLevels || hasAccordionConfig || hasBackendLevels || layoutNoHtml === 'accordion';
+        
+        const isTable = (info.IsTable !== undefined) ? info.IsTable : !shouldBeAccordion;
         const htmlColumns = $container.attr('data-colunas') ? JSON.parse($container.attr('data-colunas')) : null;
 
         let legacyConfig = null;
