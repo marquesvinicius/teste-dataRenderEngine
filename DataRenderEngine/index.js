@@ -16,24 +16,33 @@
     // Para adicionar novos PLUGINS, TEMAS ou FUNCIONALIDADES:
     // 1. Adicione uma nova linha neste array na posição desejada (a ordem de carregamento é sequencial).
     // 2. Defina o objeto com:
-    //      - path: Caminho relativo do arquivo a partir de DataRenderEngine/ (ex: 'Plugins/MeuPlugin.js')
+    //      - path: Caminho relativo do arquivo a partir de DataRenderEngine/ (ex: 'plugins/MeuPlugin.js')
     //      - check (opcional): Nome da variável global ou namespace criado pelo script (ex: 'MeuPlugin' ou 'DataRenderEngine.MeuPlugin').
     //        Isso é usado automaticamente pelo checkModules() para validar o carregamento.
     //
-    // Exemplo: { path: 'Plugins/NovoRecurso.js', check: 'NovoRecurso' }
+    // Exemplo: { path: 'plugins/NovoRecurso.js', check: 'NovoRecurso' }
     const MODULES_CONFIG = [
-        { path: 'DataController/DataController.js', check: 'DataController' },
-        { path: 'Shared/CommonStyles.js', check: 'DataRenderEngine.CommonStyles' },
-        { path: 'Shared/RendererUtils.js', check: ['RendererUtils', 'DataRenderFactory'] },
-        { path: 'Utils/ColumnWidthUtils.js' },
-        { path: 'Table/TableStyles.js', check: 'DataRenderEngine.TableStyles' },
-        { path: 'Table/TableRenderer.js', check: ['TableRenderer', 'BasicTableRenderer'] },
-        { path: 'Accordion/NestedAccordionStyles.js', check: 'DataRenderEngine.NestedAccordionStyles' },
-        { path: 'Accordion/NestedAccordionRenderer.js', check: ['NestedAccordionRenderer', 'BasicNestedAccordionRenderer'] },
-        { path: 'Plugins/SearchPlugin.js', check: 'SearchPlugin' },
-        { path: 'Plugins/SelectionPlugin.js', check: 'SelectionPlugin' },
-        { path: 'Plugins/ColumnManagerPlugins.js' },
-        { path: 'Plugins/PluginStyles.js' }
+        // Core modules
+        { path: 'core/DataController.js', check: 'DataController' },
+        { path: 'core/ConfigNormalizer.js', check: 'ConfigNormalizer' },
+        { path: 'styles/CommonStyles.js', check: 'DataRenderEngine.CommonStyles' },
+        { path: 'core/RendererHelpers.js', check: ['RendererUtils', 'DataRenderFactory'] },
+        { path: 'utils/ColumnWidthUtils.js' },
+        // Theme management
+        { path: 'themes/ThemeManager.js', check: 'ThemeManager' },
+        { path: 'styles/TableStyles.js', check: 'DataRenderEngine.TableStyles' },
+        // Renderers
+        { path: 'renderers/table/TableRenderer.js', check: ['TableRenderer', 'BasicTableRenderer'] },
+        { path: 'styles/NestedAccordionStyles.js', check: 'DataRenderEngine.NestedAccordionStyles' },
+        { path: 'renderers/accordion/AccordionRenderer.js', check: ['NestedAccordionRenderer', 'BasicNestedAccordionRenderer'] },
+        { path: 'renderers/custom/CustomRenderer.js', check: 'CustomRenderer' },
+        // Plugins
+        { path: 'plugins/SearchPlugin.js', check: 'SearchPlugin' },
+        { path: 'plugins/SelectionPlugin.js', check: 'SelectionPlugin' },
+        { path: 'plugins/ColumnManagerPlugins.js' },
+        { path: 'styles/PluginStyles.js' },
+        // Types (DevX - opcional, não bloqueia se faltar)
+        { path: 'types/index.js' }
     ];
 
     const currentScript = document.currentScript || document.querySelector('script[src*="DataRenderEngine/index.js"]');
@@ -56,13 +65,13 @@
      */
     async function loadDependencies() {
         const dependencies = [];
-        
+
         // Verifica e carrega jQuery
         if (typeof $ === 'undefined' && typeof jQuery === 'undefined') {
             console.info('%c[DataRenderEngine] 📦 Carregando jQuery...', 'color: #2196F3;');
             dependencies.push(loadExternalScript('https://code.jquery.com/jquery-3.6.0.min.js'));
         }
-        
+
         // Verifica e carrega Bootstrap CSS
         const hasBootstrap = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
             .some(link => link.href.toLowerCase().includes('bootstrap'));
@@ -70,16 +79,16 @@
             console.info('%c[DataRenderEngine] 📦 Carregando Bootstrap CSS...', 'color: #2196F3;');
             loadExternalCSS('https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css');
         }
-        
+
         // Verifica e carrega Font Awesome
         const hasFontAwesome = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
-            .some(link => link.href.toLowerCase().includes('font-awesome') || 
-                         link.href.toLowerCase().includes('fontawesome'));
+            .some(link => link.href.toLowerCase().includes('font-awesome') ||
+                link.href.toLowerCase().includes('fontawesome'));
         if (!hasFontAwesome) {
             console.info('%c[DataRenderEngine] 📦 Carregando Font Awesome...', 'color: #2196F3;');
             loadExternalCSS('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css');
         }
-        
+
         // Aguarda carregamento de scripts (CSS é assíncrono e não bloqueia)
         if (dependencies.length > 0) {
             await Promise.all(dependencies);
@@ -137,12 +146,12 @@
         try {
             // Carrega dependências automaticamente se ausentes
             await loadDependencies();
-            
+
             // Carrega módulos do motor
             for (const module of MODULES_CONFIG) {
                 await loadScript(`${basePath}/${module.path}${versionParam}`);
             }
-            
+
             initializeDataRenderEngine();
         } catch (error) {
             console.error('DataRenderEngine: Erro ao carregar módulos', error);
@@ -188,7 +197,7 @@
     function isModuleAvailable(moduleName) {
         // Verifica suporte a namespaces (ex: DataRenderEngine.CommonStyles)
         if (moduleName.includes('.')) {
-             return typeof resolveNamespace(moduleName) !== 'undefined';
+            return typeof resolveNamespace(moduleName) !== 'undefined';
         }
 
         if (typeof window[moduleName] !== 'undefined') {
@@ -246,12 +255,12 @@
 
     function checkDataRenderEngineModules() {
         const modules = {};
-        
+
         MODULES_CONFIG.forEach(config => {
             if (!config.check) return;
-            
+
             const checks = Array.isArray(config.check) ? config.check : [config.check];
-            
+
             checks.forEach(checkKey => {
                 // Remove prefixo de namespace para chave do objeto (opcional, mantendo compatibilidade)
                 // Ex: DataRenderEngine.CommonStyles -> CommonStyles
@@ -268,16 +277,136 @@
         };
     }
 
+    /**
+     * Função interna para renderização recursiva de componentes.
+     * Usada pelo AccordionRenderer para delegar renderização de folhas.
+     * 
+     * @param {HTMLElement|string} container - Container ou ID do container
+     * @param {Array} data - Dados a renderizar
+     * @param {Object} config - Configuração normalizada
+     * @returns {Object} Instância do renderer criado
+     */
+    function renderComponent(container, data, config = {}) {
+        const containerId = typeof container === 'string' ? container : container.id;
+
+        // Usa ConfigNormalizer se disponível, senão fallback para lógica legada
+        let normalizedConfig = config;
+        if (typeof window.ConfigNormalizer !== 'undefined' && !config.type) {
+            normalizedConfig = window.ConfigNormalizer.normalize(config);
+        }
+
+        const type = normalizedConfig.type || 'table';
+        const componentConfig = normalizedConfig.config || config;
+
+        if (type === 'accordion') {
+            if (typeof window.BasicNestedAccordionRenderer !== 'undefined') {
+                return window.BasicNestedAccordionRenderer.render(containerId, data, componentConfig);
+            }
+        }
+
+        // Custom/HTML component
+        if (type === 'custom' || type === 'html') {
+            const Renderer = window.DataRenderEngine?.renderers?.CustomRenderer || window.CustomRenderer;
+            if (Renderer) {
+                return Renderer.render(containerId, data, componentConfig);
+            }
+        }
+
+        // Default: tabela
+        if (typeof window.BasicTableRenderer !== 'undefined') {
+            return window.BasicTableRenderer.render(containerId, data, componentConfig.columns, componentConfig);
+        }
+
+        console.error('[DataRenderEngine] Nenhum renderer disponível para:', type);
+        return null;
+    }
+
+    /**
+     * Garantia de Retrocompatibilidade
+     * Cria shims para variáveis globais legadas, garantindo que código antigo continue funcionando
+     * mesmo após a reorganização estrutural dos arquivos.
+     */
+    function setupBackwardCompatibility() {
+        if (typeof window === 'undefined') return;
+
+        // 1. Construir namespace principal DataRenderEngine
+        window.DataRenderEngine = window.DataRenderEngine || {};
+
+        // API Principal - Aponta diretamente para o smartRender existente
+        // IMPORTANTE: NÃO criar wrapper que chama smartRender pois causaria recursão infinita
+        // quando smartRender for re-atribuído para apontar para render
+        if (typeof window.RendererUtils !== 'undefined' && typeof window.RendererUtils.smartRender === 'function') {
+            window.DataRenderEngine.render = window.RendererUtils.smartRender;
+        } else {
+            window.DataRenderEngine.render = renderComponent;
+        }
+        window.DataRenderEngine.renderComponent = renderComponent;
+
+        // Utilitários
+        if (typeof window.RendererUtils !== 'undefined') {
+            window.DataRenderEngine.Utils = window.RendererUtils;
+        }
+
+        // Core
+        window.DataRenderEngine.core = {
+            DataRenderFactory: window.DataRenderFactory || null,
+            ConfigNormalizer: window.ConfigNormalizer || null
+        };
+
+        // Renderers
+        window.DataRenderEngine.renderers = {
+            TableRenderer: window.TableRenderer || null,
+            BasicTableRenderer: window.BasicTableRenderer || null,
+            AccordionRenderer: window.NestedAccordionRenderer || null,
+            NestedAccordionRenderer: window.NestedAccordionRenderer || null,
+            CustomRenderer: window.CustomRenderer || null
+        };
+
+        // ThemeManager
+        if (typeof window.ThemeManager !== 'undefined') {
+            window.DataRenderEngine.ThemeManager = window.ThemeManager;
+        }
+
+        // 2. SHIMS LEGADOS (Crítico para portais antigos)
+
+        // RendererUtils global
+        if (window.DataRenderEngine.Utils) {
+            window.RendererUtils = window.DataRenderEngine.Utils;
+        }
+
+        // Re-acoplamento do smartRender (apenas se ainda não existir)
+        // NÃO reatribuir se já existe, pois DataRenderEngine.render já aponta para ele
+        if (window.RendererUtils && !window.RendererUtils.smartRender && window.DataRenderEngine.render) {
+            window.RendererUtils.smartRender = window.DataRenderEngine.render;
+        }
+
+        // Classes auxiliares globais
+        if (window.DataRenderEngine.renderers.TableRenderer) {
+            window.TableRenderer = window.DataRenderEngine.renderers.TableRenderer;
+        }
+        if (window.DataRenderEngine.renderers.BasicTableRenderer) {
+            window.BasicTableRenderer = window.DataRenderEngine.renderers.BasicTableRenderer;
+        }
+        if (window.DataRenderEngine.core.DataRenderFactory) {
+            window.DataRenderFactory = window.DataRenderEngine.core.DataRenderFactory;
+        }
+        if (window.DataRenderEngine.renderers.AccordionRenderer) {
+            window.NestedAccordionRenderer = window.DataRenderEngine.renderers.AccordionRenderer;
+        }
+        if (typeof window.BasicNestedAccordionRenderer !== 'undefined') {
+            window.DataRenderEngine.BasicNestedAccordionRenderer = window.BasicNestedAccordionRenderer;
+        }
+    }
+
     function initializeDataRenderEngine() {
         if (typeof window === 'undefined') return;
         window.DataRenderEngine = window.DataRenderEngine || {};
         window.DataRenderEngine.checkModules = checkDataRenderEngineModules;
         window.DataRenderEngine.loaded = true;
-        
-        // Mapeamentos legados/explícitos caso necessários
-        if (typeof window.RendererUtils !== 'undefined') window.DataRenderEngine.RendererUtils = window.RendererUtils;
-        if (typeof window.BasicNestedAccordionRenderer !== 'undefined') window.DataRenderEngine.BasicNestedAccordionRenderer = window.BasicNestedAccordionRenderer;
-        
+
+        // Configurar retrocompatibilidade após carregamento
+        setupBackwardCompatibility();
+
         autoDetectInitializations();
         executeAllInitializations();
         const event = new CustomEvent('DataRenderEngineReady', {
@@ -287,12 +416,14 @@
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', function () {
                 setTimeout(function () {
+                    setupBackwardCompatibility();
                     autoDetectInitializations();
                     executeAllInitializations();
                 }, 100);
             });
         } else {
             setTimeout(function () {
+                setupBackwardCompatibility();
                 autoDetectInitializations();
                 executeAllInitializations();
             }, 100);
@@ -316,6 +447,7 @@
         window.DataRenderEngine.load = loadDataRenderEngine;
         window.DataRenderEngine.registerInit = registerInitialization;
         if (window.DataRenderEngine.loaded) {
+            setupBackwardCompatibility();
             autoDetectInitializations();
             executeAllInitializations();
             const event = new CustomEvent('DataRenderEngineReady', {

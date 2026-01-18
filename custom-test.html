@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DataRenderEngine Verification</title>
+
+    <!-- Dependencies -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- Core Engine -->
+    <script src="DataRenderEngine/index.js"></script>
+
+    <style>
+        body {
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-pass {
+            color: green;
+            font-weight: bold;
+        }
+
+        .status-fail {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>DataRenderEngine Verification</h1>
+
+        <div class="test-section">
+            <h3>1. Namespace Check</h3>
+            <div id="namespace-results">Checking...</div>
+        </div>
+
+        <div class="test-section">
+            <h3>2. SmartRender Test (Table)</h3>
+            <div id="table-container"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>3. Plugins Check</h3>
+            <div id="plugins-results">Running...</div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DataRenderEngineReady', () => {
+            runTests();
+        });
+
+        // Fallback in case event is missed
+        window.onload = function () {
+            setTimeout(() => {
+                if (!window.testsRun) runTests();
+            }, 1000);
+        };
+
+        function logStatus(elementId, message, success) {
+            const el = document.getElementById(elementId);
+            const statusClass = success ? 'status-pass' : 'status-fail';
+            const icon = success ? '✔' : '✖';
+            el.innerHTML += `<div class="${statusClass}">${icon} ${message}</div>`;
+        }
+
+        function runTests() {
+            if (window.testsRun) return;
+            window.testsRun = true;
+
+            console.log('Running Tests...');
+
+            // 1. Namespace Check
+            const dre = window.DataRenderEngine;
+            const checks = [
+                { name: 'DataRenderEngine', valid: !!dre },
+                { name: 'DataRenderEngine.RendererUtils', valid: !!dre?.RendererUtils },
+                { name: 'DataRenderEngine.TableRenderer', valid: !!dre?.TableRenderer },
+                { name: 'DataRenderEngine.NestedAccordionRenderer', valid: !!dre?.NestedAccordionRenderer },
+                { name: 'DataRenderEngine.CommonStyles', valid: !!dre?.CommonStyles },
+                { name: 'DataRenderEngine.SearchPlugin', valid: !!dre?.SearchPlugin },
+                { name: 'DataRenderEngine.SelectionPlugin', valid: !!dre?.SelectionPlugin },
+                { name: 'DataRenderEngine.ColumnManagerPlugin', valid: !!dre?.ColumnManagerPlugin }
+            ];
+
+            const nsContainer = document.getElementById('namespace-results');
+            nsContainer.innerHTML = '';
+            checks.forEach(check => {
+                logStatus('namespace-results', `${check.name}: ${check.valid ? 'Exposed' : 'MISSING'}`, check.valid);
+            });
+
+            // 2. SmartRender Test
+            const sampleData = [
+                { id: 1, name: 'Item 1', status: 'Ativo', amount: 100 },
+                { id: 2, name: 'Item 2', status: 'Pendente', amount: 250 },
+                { id: 3, name: 'Item 3', status: 'Inativo', amount: 50 },
+                { id: 4, name: 'Item 4', status: 'Ativo', amount: 120 },
+                { id: 5, name: 'Item 5', status: 'Pendente', amount: 300 },
+                { id: 6, name: 'Item 6', status: 'Inativo', amount: 60 },
+                { id: 7, name: 'Item 7', status: 'Ativo', amount: 150 },
+                { id: 8, name: 'Item 8', status: 'Pendente', amount: 400 },
+                { id: 9, name: 'Item 9', status: 'Inativo', amount: 70 },
+                { id: 10, name: 'Item 10', status: 'Ativo', amount: 200 },
+                { id: 11, name: 'Item 11', status: 'Pendente', amount: 500 },
+                { id: 12, name: 'Item 12', status: 'Inativo', amount: 80 },
+            ];
+
+            const config = {
+                selection: true,
+                columns: [
+                    { field: 'id', title: 'ID', width: 50, sortable: true },
+                    { field: 'name', title: 'Nome', sortable: true },
+                    { field: 'status', title: 'Status', formatter: 'badge_custom_func' },
+                    { field: 'amount', title: 'Valor', formatter: 'currency' }
+                ],
+                pageSize: 5, // Force pagination
+                onRowClick: (row) => {
+                    console.log('Row Clicked:', row);
+                    logStatus('plugins-results', 'Row Click Event Fired', true);
+                },
+                theme: {
+                    primary: '#6f42c1' // Purple
+                },
+                allowSearch: true
+            };
+
+            try {
+                dre.RendererUtils.smartRender('table-container', sampleData, config);
+                logStatus('namespace-results', 'smartRender executed without error', true);
+            } catch (e) {
+                console.error(e);
+                logStatus('namespace-results', `smartRender FAILED: ${e.message}`, false);
+            }
+
+            // 3. Plugins Check
+            // Check if plugins are attached
+            setTimeout(() => {
+                const searchInput = document.querySelector('#table-container .tr-search-input');
+                logStatus('plugins-results', `Search Plugin Input Rendered: ${!!searchInput}`, !!searchInput);
+
+                // Test Search Interaction (Mock)
+                if (searchInput) {
+                    searchInput.value = 'Item 1';
+                    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    logStatus('plugins-results', 'Search Input Event Dispatched', true);
+                }
+
+                // Check Pagination
+                const pagination = document.querySelector('#pagination-container');
+                logStatus('plugins-results', `Pagination Rendered: ${!!pagination}`, !!pagination);
+
+                // Simulate Row Click (First row)
+                const firstRow = document.querySelector('#table-container tbody tr');
+                if (firstRow) {
+                    firstRow.click();
+                } else {
+                    logStatus('plugins-results', 'Row Click Test Skipped (No rows)', false);
+                }
+
+            }, 500);
+        }
+    </script>
+</body>
+
+</html>

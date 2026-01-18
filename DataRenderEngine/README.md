@@ -104,10 +104,10 @@ O Engine possui um sistema de `try/catch` granular.
 
 ## 🔌 Criando Novos Plugins
 
-Para criar uma nova funcionalidade (ex: Exportar Excel), crie uma classe em `/Plugins` seguindo este padrão:
+Para criar uma nova funcionalidade (ex: Exportar Excel), crie uma classe em `/plugins` seguindo este padrão:
 
 ```javascript
-// Arquivo: /Plugins/ExportExcelPlugin.js
+// Arquivo: /plugins/ExportExcelPlugin.js
 window.ExportExcelPlugin = class ExportExcelPlugin {
     constructor() {
         this.id = 'export-excel'; // ID único obrigatório
@@ -134,7 +134,7 @@ window.ExportExcelPlugin = class ExportExcelPlugin {
 
 ### 🎨 Governança de CSS
 
-**Não use estilos inline.** Adicione as classes novas no arquivo `/Plugins/PluginStyles.js`.
+**Não use estilos inline.** Adicione as classes novas no arquivo `/styles/PluginStyles.js`.
 
 * **Prefixo Obrigatório:** Use `.tre-` (Table Render Engine) para evitar conflitos com o CSS legado (`.tr-`).
 * ✅ `.tre-search-input`

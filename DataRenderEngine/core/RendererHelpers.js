@@ -1239,13 +1239,13 @@ class DataRenderFactory {
         $(`#${containerId}-footer-global`).remove();
 
         const layoutNoHtml = $container.attr('data-layout');
-        
+
         // Prioriza config.levels sobre data-layout do HTML para melhor portabilidade
         const hasConfigLevels = config.levels && config.levels.length > 0;
         const hasAccordionConfig = config.accordion?.levels?.length > 0;
         const hasBackendLevels = info.Accordion?.Niveis?.length > 0;
         const shouldBeAccordion = hasConfigLevels || hasAccordionConfig || hasBackendLevels || layoutNoHtml === 'accordion';
-        
+
         const isTable = (info.IsTable !== undefined) ? info.IsTable : !shouldBeAccordion;
         const htmlColumns = $container.attr('data-colunas') ? JSON.parse($container.attr('data-colunas')) : null;
 
@@ -1301,6 +1301,22 @@ class DataRenderFactory {
         config.plugins = finalPlugins;
 
         let renderer;
+
+        // 🎯 Custom Component Renderer (HTML/JS Dinâmico)
+        // Prioridade sobre table/accordion quando type é explicitamente 'custom' ou 'html'
+        if (config.type === 'custom' || config.type === 'html') {
+            const CustomRenderer = window.DataRenderEngine?.renderers?.CustomRenderer || window.CustomRenderer;
+            if (CustomRenderer) {
+                // Para custom, passamos config.config (a parte específica do custom)
+                const customConfig = config.config || {};
+                renderer = CustomRenderer.render(containerId, relacao, customConfig);
+                return renderer; // Early return - não precisa continuar para table/accordion
+            } else {
+                console.error('[DataRenderFactory] CustomRenderer não encontrado. Verifique se CustomRenderer.js foi carregado.');
+                return null;
+            }
+        }
+
         if (isTable) {
             const tableDefaults = {
                 pagination: true,

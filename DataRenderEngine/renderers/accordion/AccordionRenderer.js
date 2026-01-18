@@ -207,7 +207,7 @@ class NestedAccordionRenderer {
     }
     generateLevelColors(baseColor) {
         const theme = [];
-        
+
         for (let i = 0; i < 6; i++) {
             // 1. Tenta ler override explícito do CSS (definido no root da página/produto)
             const cssBorder = RendererUtils.getCssVariable(`--nar-level-${i}-border`);
@@ -215,17 +215,17 @@ class NestedAccordionRenderer {
 
             if (cssBorder) {
                 // Se existe variável CSS, usa ela (Prioridade Alta)
-                theme.push({ 
-                    border: cssBorder.trim(), 
-                    bg: cssBg ? cssBg.trim() : '#fff' 
+                theme.push({
+                    border: cssBorder.trim(),
+                    bg: cssBg ? cssBg.trim() : '#fff'
                 });
             } else {
                 // 2. Fallback: Geração Automática baseada na Cor Primária
                 // Estratégia: reduz a opacidade/intensidade 15% a cada nível
-                const opacity = Math.max(0.2, 1 - (i * 0.33)); 
-                
-                const generatedColor = (i === 0) 
-                    ? baseColor 
+                const opacity = Math.max(0.2, 1 - (i * 0.33));
+
+                const generatedColor = (i === 0)
+                    ? baseColor
                     : RendererUtils.applyOpacity(baseColor, opacity);
 
                 theme.push({
@@ -234,7 +234,7 @@ class NestedAccordionRenderer {
                 });
             }
         }
-        
+
         return theme;
     }
     initStyles() {
@@ -301,12 +301,12 @@ class NestedAccordionRenderer {
         // 2. Delegate to Leaf Tables (Nested Table Level)
         // Busca todos os containers de folha dentro do accordion
         const leafContainers = document.querySelectorAll(`#nar-content-${this.containerId} .nar-leaf-container`);
-        
+
         // console.log(`[NestedAccordion] updateSelectionVisuals: Found ${leafContainers.length} leaf containers in #${this.containerId}`);
-        
+
         leafContainers.forEach(leafContainer => {
             if (!leafContainer.id) return;
-            
+
             const leafInstance = window.TableInstances[leafContainer.id];
             if (leafInstance) {
                 // console.log(`[NestedAccordion] Delegating to leaf table #${leafContainer.id}`);
@@ -922,13 +922,13 @@ class BasicNestedAccordionRenderer {
         // 2. Metadados de LinkTable
         // 3. Metadados de Colunas (PK ou primeira coluna)
         // 4. Fallback 'CODIGO'
-        const resolvedKeyField = 
+        const resolvedKeyField =
             (globalOpts.keyField) ? globalOpts.keyField :
-            (accordionSpecificOpts.keyField) ? accordionSpecificOpts.keyField :
-            (info.Tabela && info.Tabela.LinkTable && info.Tabela.LinkTable[1]) ? info.Tabela.LinkTable[1] :
-            (info.Tabela && info.Tabela.PK) ? info.Tabela.PK :
-            (info.Tabela && info.Tabela.Columns && info.Tabela.Columns[0]) ? info.Tabela.Columns[0].field :
-            (info.Tabela && info.Tabela.Campos) ? info.Tabela.Campos[0] : 'CODIGO';
+                (accordionSpecificOpts.keyField) ? accordionSpecificOpts.keyField :
+                    (info.Tabela && info.Tabela.LinkTable && info.Tabela.LinkTable[1]) ? info.Tabela.LinkTable[1] :
+                        (info.Tabela && info.Tabela.PK) ? info.Tabela.PK :
+                            (info.Tabela && info.Tabela.Columns && info.Tabela.Columns[0]) ? info.Tabela.Columns[0].field :
+                                (info.Tabela && info.Tabela.Campos) ? info.Tabela.Campos[0] : 'CODIGO';
 
         // console.log('[NestedAccordion] Resolved KeyField:', resolvedKeyField);
 
@@ -937,13 +937,13 @@ class BasicNestedAccordionRenderer {
         const leafInstancesMap = new Map();
 
         // Função placeholder - será substituída
-        let leafRenderFn = () => {};
+        let leafRenderFn = () => { };
 
         const rendererConfig = {
             keyField: resolvedKeyField,
             containerId: containerId,
             levels: levels,
-            data: [], 
+            data: [],
             ...globalOpts,
             ...accordionSpecificOpts,
             pagination: accordionSpecificOpts.pagination ?? globalOpts.pagination,
@@ -966,10 +966,10 @@ class BasicNestedAccordionRenderer {
         };
 
         const renderer = new NestedAccordionRenderer(rendererConfig);
-        
+
         // Expor o mapa na instância para uso no updateSelectionVisuals
         renderer.leafInstances = leafInstancesMap;
-        
+
         // Hook no setData para limpar instâncias antigas
         const originalSetData = renderer.dataController.setData.bind(renderer.dataController);
         renderer.dataController.setData = (data) => {
@@ -978,7 +978,7 @@ class BasicNestedAccordionRenderer {
         };
 
         // Override inteligente do updateSelectionVisuals para usar o MAP
-        renderer.updateSelectionVisuals = function() {
+        renderer.updateSelectionVisuals = function () {
             if (!this.selectionEnabled || !this.selectionPlugin) return;
 
             // 1. Update Group Headers (Accordion Level)
@@ -1007,11 +1007,11 @@ class BasicNestedAccordionRenderer {
             // 2. Delegate to Leaf Tables (Direct Instance Access)
             // console.log(`[NestedAccordion] updateSelectionVisuals: Updating ${this.leafInstances.size} leaf tables directly.`);
             this.leafInstances.forEach((leafInstance, leafId) => {
-               if (leafInstance && typeof leafInstance.updateSelectionVisuals === 'function') {
-                   leafInstance.updateSelectionVisuals();
-               } else if (leafInstance && leafInstance.selectionPlugin && typeof leafInstance.selectionPlugin.updateVisuals === 'function') {
-                   leafInstance.selectionPlugin.updateVisuals();
-               }
+                if (leafInstance && typeof leafInstance.updateSelectionVisuals === 'function') {
+                    leafInstance.updateSelectionVisuals();
+                } else if (leafInstance && leafInstance.selectionPlugin && typeof leafInstance.selectionPlugin.updateVisuals === 'function') {
+                    leafInstance.selectionPlugin.updateVisuals();
+                }
             });
         };
 
@@ -1058,38 +1058,59 @@ class BasicNestedAccordionRenderer {
                 });
 
             // Renderiza e CAPTURA a instância
-            const leafInstance = BasicTableRenderer.render(
-                container.id,
-                items,
-                columnsToRender,
-                {
-                    pageSize: 10,
-                    forceCompactPagination: true,
-                    isInAccordion: true,
-                    ...globalOpts,
-                    ...tableSpecificOpts,
-                    allowSearch: leafAllowSearch,
-                    allowColumnManagement: leafAllowColMan,
-                    plugins: leafPlugins,
-                    tableId: `tbl-nested-${leafId}`,
-                    keyField: resolvedKeyField,
-                    actions: actions,
-                    actionsColumnWidth: actionsColumnWidth,
-                    onRowClick: onRowClick,
-                    selection: (tableSpecificOpts.selection !== undefined)
-                        ? tableSpecificOpts.selection
-                        : renderer.selectionEnabled,
-                    
-                    externalSelectedIds: sharedSelectedIds,
+            // Suporte para renderização recursiva via renderComponent
+            let leafInstance;
 
-                    onSelectionChange: (selectedItems) => {
-                        if (renderer && typeof renderer.updateSelectionVisuals === 'function') {
-                            renderer.updateSelectionVisuals();
-                        }
-                    },
-                    ...(tableSpecificOpts.extraConfig || {}),
-                }
-            );
+            const leafConfig = {
+                pageSize: 10,
+                forceCompactPagination: true,
+                isInAccordion: true,
+                ...globalOpts,
+                ...tableSpecificOpts,
+                columns: columnsToRender,
+                allowSearch: leafAllowSearch,
+                allowColumnManagement: leafAllowColMan,
+                plugins: leafPlugins,
+                tableId: `tbl-nested-${leafId}`,
+                keyField: resolvedKeyField,
+                actions: actions,
+                actionsColumnWidth: actionsColumnWidth,
+                onRowClick: onRowClick,
+                selection: (tableSpecificOpts.selection !== undefined)
+                    ? tableSpecificOpts.selection
+                    : renderer.selectionEnabled,
+
+                externalSelectedIds: sharedSelectedIds,
+
+                onSelectionChange: (selectedItems) => {
+                    if (renderer && typeof renderer.updateSelectionVisuals === 'function') {
+                        renderer.updateSelectionVisuals();
+                    }
+                },
+                ...(tableSpecificOpts.extraConfig || {}),
+            };
+
+            // Verifica se foi passada configuração recursiva (content)
+            // Se sim, delega para renderComponent (inversão de controle)
+            if (rendererConfig.content && window.DataRenderEngine && window.DataRenderEngine.renderComponent) {
+                // Merge config de folha com a config.content recursiva
+                const recursiveConfig = {
+                    ...leafConfig,
+                    ...rendererConfig.content.config
+                };
+                leafInstance = window.DataRenderEngine.renderComponent(container, items, {
+                    type: rendererConfig.content.type || 'table',
+                    config: recursiveConfig
+                });
+            } else {
+                // Fallback: comportamento original (chamada direta ao BasicTableRenderer)
+                leafInstance = BasicTableRenderer.render(
+                    container.id,
+                    items,
+                    columnsToRender,
+                    leafConfig
+                );
+            }
 
             // Registra a instância no mapa
             if (leafInstance) {
